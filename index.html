@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>Zombie Game 2D</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+  }
+
+  #menu button {
+    margin: 5px;
+    padding: 10px;
+    cursor: pointer;
+  }
+
+  canvas {
+    background: #222;
+    display: none;
+    margin: auto;
+  }
+</style>
+</head>
+<body>
+
+<h2>اختر الشخصية</h2>
+<div id="menu">
+  <button onclick="selectPlayer(1)"><img src="player1.png" width="60"><br>1</button>
+  <button onclick="selectPlayer(2)"><img src="player2.png" width="60"><br>2</button>
+  <button onclick="selectPlayer(3)"><img src="player3.png" width="60"><br>3</button>
+
+  <h2>اختر li ra7 y7wik</h2>
+  <button onclick="selectZombie(1)"><img src="zombie1.png" width="60"></button>
+  <button onclick="selectZombie(2)"><img src="zombie2.png" width="60"></button>
+  <button onclick="selectZombie(3)"><img src="zombie3.png" width="60"></button>
+</div>
+
+<canvas id="game" width="700" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let playerImg = new Image();
+let zombieImg = new Image();
+let shootSound, dieSound;
+
+let bullets = [];
+let zombies = [];
+let hearts = 3;
+
+const player = { x: 325, y: 170, size: 50 };
+
+function selectPlayer(n) {
+  playerImg.src = `player${n}.png`;
+  shootSound = new Audio(`shoot${n}.mp3`);
+  checkStart();
+}
+
+function selectZombie(n) {
+  zombieImg.src = `zombie${n}.png`;
+  dieSound = new Audio(`die${n}.mp3`);
+  checkStart();
+}
+
+function checkStart() {
+  if (playerImg.src && zombieImg.src) {
+    document.getElementById("menu").style.display = "none";
+    canvas.style.display = "block";
+    spawnZombie();
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+function spawnZombie() {
+  const side = Math.floor(Math.random() * 4);
+  let z = { x: 0, y: 0, size: 50 };
+
+  if (side === 0) { z.x = -50; z.y = Math.random()*350; }       // يسار
+  if (side === 1) { z.x = 700; z.y = Math.random()*350; }      // يمين
+  if (side === 2) { z.x = Math.random()*650; z.y = -50; }     // فوق
+  if (side === 3) { z.x = Math.random()*650; z.y = 400; }     // تحت
+
+  zombies.push(z);
+}
+
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  let killed = false;
+
+  zombies.forEach((z, i) => {
+    if (mx > z.x && mx < z.x+50 && my > z.y && my < z.y+50) {
+      zombies.splice(i, 1);
+      dieSound.play();
+      spawnZombie();
+      killed = true;
+    }
+  });
+
+  if (!killed) {
+    bullets.push({ x: player.x+25, y: player.y+25, dx: mx, dy: my });
+    shootSound.play();
+  }
+});
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // القلوب
+  ctx.fillStyle = "red";
+  ctx.font = "20px Arial";
+  ctx.fillText("❤️ ".repeat(hearts), canvas.width/2 - 30, 25);
+
+  ctx.drawImage(playerImg, player.x, player.y, 50, 50);
+
+  zombies.forEach((z, zi) => {
+    const dx = player.x - z.x;
+    const dy = player.y - z.y;
+    const dist = Math.hypot(dx, dy);
+
+    z.x += dx / dist * 0.6;
+    z.y += dy / dist * 0.6;
+
+    ctx.drawImage(zombieImg, z.x, z.y, 50, 50);
+
+    if (dist < 40) {
+      zombies.splice(zi, 1);
+      hearts--;
+      spawnZombie();
+      if (hearts <= 0) {
+        alert("Game Over ☠️");
+        location.reload();
+      }
+    }
+  });
+
+  bullets.forEach((b, bi) => {
+    b.x += (b.dx - b.x) * 0.1;
+    b.y += (b.dy - b.y) * 0.1;
+
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(b.x, b.y, 5, 5);
+
+    zombies.forEach((z, zi) => {
+      if (b.x > z.x && b.x < z.x+50 && b.y > z.y && b.y < z.y+50) {
+        zombies.splice(zi, 1);
+        bullets.splice(bi, 1);
+        dieSound.play();
+        spawnZombie();
+      }
+    });
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+</script>
+
+</body>
+</html>
